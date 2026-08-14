@@ -118,7 +118,6 @@ jobs:
     permissions:
       actions: read
       contents: write
-    if: ${{ github.event_name == 'push' && contains(fromJSON('["refs/heads/main"]'), github.ref) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -136,6 +135,13 @@ jobs:
           pattern: __artifacts_package_*
           path: __artifacts/package
           merge-multiple: true
+
+      - name: Enumerate package artifacts contents
+        shell: pwsh
+        run: |
+          Get-ChildItem -File -Recurse __artifacts/package |
+            Get-FileHash -Algorithm SHA256 |
+            Format-List
 
       - name: Get version
         id: get_version
