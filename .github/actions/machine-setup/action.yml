@@ -1,4 +1,5 @@
 name: Machine Setup
+description: Canonical machine setup for this repo
 
 runs:
   using: "composite"
