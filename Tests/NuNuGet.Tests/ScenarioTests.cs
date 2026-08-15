@@ -8,7 +8,7 @@ using static NuNuGet.Tests.Helper;
 
 internal static class TestEnvironment
 {
-    public static readonly string TestFolder = Path.GetDirectoryName(typeof(TestEnvironment).Assembly.Location)!;
+    public static readonly string TestFolder = AppContext.BaseDirectory;
 
     public static readonly string RepositoryRoot = Path.GetFullPath(Git.GetRepositoryRoot(TestFolder));
 
