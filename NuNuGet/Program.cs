@@ -18,6 +18,10 @@ internal static class Program
     {
         try
         {
+            // Set 'NUGET_USE_SYSTEM_TEXT_JSON_DESERIALIZATION' to 'true' for the current process to force NuGet Client
+            // SDK to use System.Text.Json for [de]serialization - which is AOT friendly - rather than Newtonsoft.Json.
+            Environment.SetEnvironmentVariable("NUGET_USE_SYSTEM_TEXT_JSON_DESERIALIZATION", "true");
+
             using ILoggerFactory loggerFactory = LoggerFactory.Create(builder =>
                 builder.AddSimpleConsole(options =>
                 {
