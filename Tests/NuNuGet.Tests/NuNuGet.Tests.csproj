@@ -6,6 +6,9 @@
     <!-- IDE0058: TUnit's fluent 'await Assert.That(...).IsX()' assertions intentionally discard their returned assertion builder. -->
     <NoWarn>$(NoWarn);1591;IDE0058</NoWarn>
 
+    <!-- Opt-in to AOT tests -->
+    <PublishAot>true</PublishAot>
+
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
 
     <IsPackable>false</IsPackable>
