@@ -5,6 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <NoWarn>$(NoWarn);1591</NoWarn>
 
+    <!-- Opt-in to AOT tests -->
+    <PublishAot>true</PublishAot>
+
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
 
     <IsPackable>false</IsPackable>
