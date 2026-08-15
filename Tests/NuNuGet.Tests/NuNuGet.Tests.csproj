@@ -7,6 +7,7 @@
 
     <!-- Opt-in to AOT tests -->
     <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
 
     <ValidateExecutableReferencesMatchSelfContained>false</ValidateExecutableReferencesMatchSelfContained>
 
