@@ -17,18 +17,31 @@ permissions:
 
 jobs:
   build:
-    name: Build (${{ matrix.os }})
+    name: Build (${{ matrix.rid }})
     permissions:
       contents: read
       actions: write
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, windows-2025]
+        rid: [any, win-x64, win-arm64, linux-x64, linux-arm64, osx-arm64]
         include:
-          - os: ubuntu-22.04
+          - rid: any
+            os: ubuntu-22.04
             checkFormatting: true
-            publishPackages: true
+            buildRootPackage: true
+          - rid: win-x64
+            os: windows-2025
+          - rid: win-arm64
+            os: windows-2025
+          - rid: linux-x64
+            os: ubuntu-26.04
+          - rid: linux-arm64
+            os: ubuntu-26.04-arm
+          - rid: osx-arm64
+            os: macos-15
+    env:
+      PUBLISH_PROFILE: SingleFileSelfContainedTrimmedAot
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -52,50 +65,51 @@ jobs:
         run: |
           & dotnet format --no-restore --verify-no-changes
 
-      - name: Build (debug)
-        shell: pwsh
-        run: |
-          & dotnet pack --no-restore --configuration Debug /bl:__artifacts/msbuild.debug.binlog
+      - name: Build, Test, Pack - Debug
+        uses: ./.github/actions/build-test-pack
+        with:
+          configuration: Debug
+          runtime: ${{ matrix.rid }}
+          publish-profile: ${{ env.PUBLISH_PROFILE }}
+          publish-project: ./NuNuGet/NuNuGet.csproj
+          log-path: __artifacts/
 
-      - name: Test (debug)
-        shell: pwsh
-        run: |
-          & dotnet test --no-restore --configuration Debug
+      - name: Build, Test, Pack - Release
+        uses: ./.github/actions/build-test-pack
+        with:
+          configuration: Release
+          runtime: ${{ matrix.rid }}
+          publish-profile: ${{ env.PUBLISH_PROFILE }}
+          publish-project: ./NuNuGet/NuNuGet.csproj
+          log-path: __artifacts/
 
-      - name: Build (release)
+      - name: Build 'Root' Package
+        if: ${{ matrix.buildRootPackage }}
         shell: pwsh
         run: |
-          & dotnet pack --no-restore --configuration Release /bl:__artifacts/msbuild.release.binlog
+          & dotnet pack ./NuNuGet/NuNuGet.csproj `
+                        --configuration Debug `
+                        /p:PublishProfile=${{ env.PUBLISH_PROFILE }} `
+                        /bl:__artifacts/msbuild.pack-root.Debug.binlog
 
-      - name: Test (release)
-        shell: pwsh
-        run: |
-          & dotnet test --no-restore --configuration Release
-
-      - name: Publish packages
-        if: ${{ matrix.publishPackages && contains(fromJSON('["refs/heads/main"]'), github.ref) }}
-        shell: pwsh
-        run: |
-          & dotnet nuget add source --name github "https://nuget.pkg.github.com/mschofie/index.json"
-          Get-ChildItem -Path __artifacts/package/release/MSchofie.*.nupkg |
-            ForEach-Object {
-              & dotnet nuget push $_.FullName --api-key ${{ secrets.PACKAGE_PUBLISH_PAT }} --source "github"
-            }
+          & dotnet pack ./NuNuGet/NuNuGet.csproj `
+                        --configuration Release `
+                        /p:PublishProfile=${{ env.PUBLISH_PROFILE }} `
+                        /bl:__artifacts/msbuild.pack-root.Release.binlog
 
       - name: Upload 'package' artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: __artifacts_package_${{ matrix.os }}
+          name: __artifacts_package_${{ matrix.rid }}
           path: |
             __artifacts/package
 
       - name: Upload 'msbuild_binlog' artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: __artifacts_msbuild_binlog_${{ matrix.os }}
+          name: __artifacts_msbuild_binlog_${{ matrix.rid }}
           path: |
-            __artifacts/msbuild.debug.binlog
-            __artifacts/msbuild.release.binlog
+            __artifacts/msbuild.*.binlog
 
   create-release:
     name: Create release and upload assets
@@ -116,11 +130,12 @@ jobs:
       - name: Machine Setup
         uses: ./.github/actions/machine-setup
 
-      - name: Download package artifact
+      - name: Download package artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          name: __artifacts_package_windows-2025
+          pattern: __artifacts_package_*
           path: __artifacts/package
+          merge-multiple: true
 
       - name: Get version
         id: get_version

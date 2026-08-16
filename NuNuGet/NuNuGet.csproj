@@ -5,13 +5,21 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64;arm64</Platforms>
-    <RuntimeIdentifiers>win-x64;win-arm64;linux-x64;linux-arm64;osx-arm64</RuntimeIdentifiers>
+    <RuntimeIdentifiers>any;win-x64;win-arm64;linux-x64;linux-arm64;osx-arm64</RuntimeIdentifiers>
+
+    <!-- Must be visible at project-evaluation time (not only via a PublishProfile) so the SDK's tool-packaging targets
+    can tell up front that this is an AOT tool and skip trying to auto-build every RID package in one `dotnet pack`
+    invocation, which fails for cross-OS/arch RIDs. -->
+    <PublishAot>true</PublishAot>
+    <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
 
   <!-- NuGet Packaging -->
   <PropertyGroup>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>NuNuGet</ToolCommandName>
+
+    <CreateRidSpecificToolPackages>true</CreateRidSpecificToolPackages>
 
     <Authors>mschofie</Authors>
     <Company>mschofie</Company>
@@ -23,6 +31,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>NuGet;Package;Tool</PackageTags>
     <Title>NuNuGet</Title>
+
+    <!-- No .snupkg: PackAsTool forces IncludeBuildOutput=false, which disables the SDK's debug-symbol harvesting
+         entirely, and Native AOT's stripped .pdb is a native (non-portable) symbol file that nuget.org's symbol
+         server wouldn't accept anyway. The .pdb is dropped from the package below instead (see PublishFixup). -->
+    <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,5 +57,25 @@
     <PackageReference Include="NuGet.Resolver" />
     <PackageReference Include="System.CommandLine" />
   </ItemGroup>
+
+  <!-- PackTool globs the whole publish output into the main package, including the .pdb. Strip it back out here - this
+  runs AfterTargets="PackTool", in the same build request that populates TfmSpecificPackageFile. -->
+  <Target Name="PublishFixup"
+          AfterTargets="PackTool"
+          Condition=" '$(RuntimeIdentifier)' != '' ">
+    <ItemGroup>
+      <!-- Remove '.pdb' files on Windows -->
+      <TfmSpecificPackageFile Remove="@(TfmSpecificPackageFile)" Condition=" '%(TfmSpecificPackageFile.Extension)'=='.pdb' " />
+
+      <!-- Remove '.dbg' files on Linux -->
+      <TfmSpecificPackageFile Remove="@(TfmSpecificPackageFile)" Condition=" '%(TfmSpecificPackageFile.Extension)'=='.dbg' " />
+
+      <!-- Remove the '.dSYM' bundle on MacOS: it's a directory tree (Contents/Info.plist, Contents/Resources/DWARF/...),
+      not a single file with a '.dSYM' extension, so match on the '.dSYM' path segment instead. Item metadata can be
+      passed into a property function here because it's substituted as a literal string per-item (batching) before the
+      Condition is evaluated - it isn't really "a property function running on metadata" at evaluation time. -->
+      <TfmSpecificPackageFile Remove="@(TfmSpecificPackageFile)" Condition="$([System.String]::new('%(TfmSpecificPackageFile.Identity)').Contains('.dSYM'))" />
+    </ItemGroup>
+  </Target>
 
 </Project>
