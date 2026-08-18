@@ -4,12 +4,11 @@ using NuGet.LibraryModel;
 using NuGet.Versioning;
 using NuNuGet.Commands;
 using NuNuGet.Models;
-using Xunit;
 
 public class PackageEntryExtensionsTests
 {
-    [Fact]
-    public void ToLibraryDependency_WithExactVersion_CreatesCorrectLibraryDependency()
+    [Test]
+    public async Task ToLibraryDependency_WithExactVersion_CreatesCorrectLibraryDependency()
     {
         PackageEntry package = new()
         {
@@ -19,22 +18,22 @@ public class PackageEntryExtensionsTests
 
         LibraryDependency result = package.ToLibraryDependency();
 
-        Assert.NotNull(result);
-        Assert.NotNull(result.LibraryRange);
-        Assert.NotNull(result.LibraryRange.VersionRange);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.LibraryRange).IsNotNull();
+        await Assert.That(result.LibraryRange.VersionRange).IsNotNull();
 
-        Assert.Equal("Newtonsoft.Json", result.LibraryRange.Name);
-        Assert.Equal(LibraryDependencyTarget.Package, result.LibraryRange.TypeConstraint);
+        await Assert.That(result.LibraryRange.Name).IsEqualTo("Newtonsoft.Json");
+        await Assert.That(result.LibraryRange.TypeConstraint).IsEqualTo(LibraryDependencyTarget.Package);
 
-        Assert.False(result.LibraryRange.VersionRange.IsFloating);
-        Assert.True(result.LibraryRange.VersionRange.HasLowerBound);
-        Assert.True(result.LibraryRange.VersionRange.HasUpperBound);
-        Assert.True(result.LibraryRange.VersionRange.IsMinInclusive);
-        Assert.True(result.LibraryRange.VersionRange.IsMaxInclusive);
+        await Assert.That(result.LibraryRange.VersionRange.IsFloating).IsFalse();
+        await Assert.That(result.LibraryRange.VersionRange.HasLowerBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasUpperBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMinInclusive).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMaxInclusive).IsTrue();
     }
 
-    [Fact]
-    public void ToLibraryDependency_WithMinimumVersion_CreatesCorrectVersionRange()
+    [Test]
+    public async Task ToLibraryDependency_WithMinimumVersion_CreatesCorrectVersionRange()
     {
         PackageEntry package = new()
         {
@@ -44,22 +43,22 @@ public class PackageEntryExtensionsTests
 
         LibraryDependency result = package.ToLibraryDependency();
 
-        Assert.NotNull(result);
-        Assert.NotNull(result.LibraryRange);
-        Assert.NotNull(result.LibraryRange.VersionRange);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.LibraryRange).IsNotNull();
+        await Assert.That(result.LibraryRange.VersionRange).IsNotNull();
 
-        Assert.Equal("AutoMapper", result.LibraryRange.Name);
-        Assert.Equal(LibraryDependencyTarget.Package, result.LibraryRange.TypeConstraint);
+        await Assert.That(result.LibraryRange.Name).IsEqualTo("AutoMapper");
+        await Assert.That(result.LibraryRange.TypeConstraint).IsEqualTo(LibraryDependencyTarget.Package);
 
-        Assert.False(result.LibraryRange.VersionRange.IsFloating);
-        Assert.True(result.LibraryRange.VersionRange.HasLowerBound);
-        Assert.False(result.LibraryRange.VersionRange.HasUpperBound);
-        Assert.True(result.LibraryRange.VersionRange.IsMinInclusive);
-        Assert.False(result.LibraryRange.VersionRange.IsMaxInclusive);
+        await Assert.That(result.LibraryRange.VersionRange.IsFloating).IsFalse();
+        await Assert.That(result.LibraryRange.VersionRange.HasLowerBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasUpperBound).IsFalse();
+        await Assert.That(result.LibraryRange.VersionRange.IsMinInclusive).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMaxInclusive).IsFalse();
     }
 
-    [Fact]
-    public void ToLibraryDependency_WithFloatingMajorVersion_CreatesCorrectVersionRange()
+    [Test]
+    public async Task ToLibraryDependency_WithFloatingMajorVersion_CreatesCorrectVersionRange()
     {
         PackageEntry package = new()
         {
@@ -69,19 +68,19 @@ public class PackageEntryExtensionsTests
 
         LibraryDependency result = package.ToLibraryDependency();
 
-        Assert.NotNull(result);
-        Assert.NotNull(result.LibraryRange);
-        Assert.NotNull(result.LibraryRange.VersionRange);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.LibraryRange).IsNotNull();
+        await Assert.That(result.LibraryRange.VersionRange).IsNotNull();
 
-        Assert.True(result.LibraryRange.VersionRange.IsFloating);
-        Assert.True(result.LibraryRange.VersionRange.HasLowerBound);
-        Assert.False(result.LibraryRange.VersionRange.HasUpperBound);
-        Assert.True(result.LibraryRange.VersionRange.IsMinInclusive);
-        Assert.False(result.LibraryRange.VersionRange.IsMaxInclusive);
+        await Assert.That(result.LibraryRange.VersionRange.IsFloating).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasLowerBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasUpperBound).IsFalse();
+        await Assert.That(result.LibraryRange.VersionRange.IsMinInclusive).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMaxInclusive).IsFalse();
     }
 
-    [Fact]
-    public void ToLibraryDependency_WithFloatingMinorVersion_CreatesCorrectVersionRange()
+    [Test]
+    public async Task ToLibraryDependency_WithFloatingMinorVersion_CreatesCorrectVersionRange()
     {
         PackageEntry package = new()
         {
@@ -91,19 +90,19 @@ public class PackageEntryExtensionsTests
 
         LibraryDependency result = package.ToLibraryDependency();
 
-        Assert.NotNull(result);
-        Assert.NotNull(result.LibraryRange);
-        Assert.NotNull(result.LibraryRange.VersionRange);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.LibraryRange).IsNotNull();
+        await Assert.That(result.LibraryRange.VersionRange).IsNotNull();
 
-        Assert.True(result.LibraryRange.VersionRange.IsFloating);
-        Assert.True(result.LibraryRange.VersionRange.HasLowerBound);
-        Assert.False(result.LibraryRange.VersionRange.HasUpperBound);
-        Assert.True(result.LibraryRange.VersionRange.IsMinInclusive);
-        Assert.False(result.LibraryRange.VersionRange.IsMaxInclusive);
+        await Assert.That(result.LibraryRange.VersionRange.IsFloating).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasLowerBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasUpperBound).IsFalse();
+        await Assert.That(result.LibraryRange.VersionRange.IsMinInclusive).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMaxInclusive).IsFalse();
     }
 
-    [Fact]
-    public void ToLibraryDependency_WithVersionRangeInclusiveBounds_CreatesCorrectVersionRange()
+    [Test]
+    public async Task ToLibraryDependency_WithVersionRangeInclusiveBounds_CreatesCorrectVersionRange()
     {
         PackageEntry package = new()
         {
@@ -113,19 +112,19 @@ public class PackageEntryExtensionsTests
 
         LibraryDependency result = package.ToLibraryDependency();
 
-        Assert.NotNull(result);
-        Assert.NotNull(result.LibraryRange);
-        Assert.NotNull(result.LibraryRange.VersionRange);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.LibraryRange).IsNotNull();
+        await Assert.That(result.LibraryRange.VersionRange).IsNotNull();
 
-        Assert.False(result.LibraryRange.VersionRange.IsFloating);
-        Assert.True(result.LibraryRange.VersionRange.HasLowerBound);
-        Assert.True(result.LibraryRange.VersionRange.HasUpperBound);
-        Assert.True(result.LibraryRange.VersionRange.IsMinInclusive);
-        Assert.True(result.LibraryRange.VersionRange.IsMaxInclusive);
+        await Assert.That(result.LibraryRange.VersionRange.IsFloating).IsFalse();
+        await Assert.That(result.LibraryRange.VersionRange.HasLowerBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasUpperBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMinInclusive).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMaxInclusive).IsTrue();
     }
 
-    [Fact]
-    public void ToLibraryDependency_WithVersionRangeExclusiveUpperBound_CreatesCorrectVersionRange()
+    [Test]
+    public async Task ToLibraryDependency_WithVersionRangeExclusiveUpperBound_CreatesCorrectVersionRange()
     {
         PackageEntry package = new()
         {
@@ -135,19 +134,19 @@ public class PackageEntryExtensionsTests
 
         LibraryDependency result = package.ToLibraryDependency();
 
-        Assert.NotNull(result);
-        Assert.NotNull(result.LibraryRange);
-        Assert.NotNull(result.LibraryRange.VersionRange);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.LibraryRange).IsNotNull();
+        await Assert.That(result.LibraryRange.VersionRange).IsNotNull();
 
-        Assert.False(result.LibraryRange.VersionRange.IsFloating);
-        Assert.True(result.LibraryRange.VersionRange.HasLowerBound);
-        Assert.True(result.LibraryRange.VersionRange.HasUpperBound);
-        Assert.True(result.LibraryRange.VersionRange.IsMinInclusive);
-        Assert.False(result.LibraryRange.VersionRange.IsMaxInclusive);
+        await Assert.That(result.LibraryRange.VersionRange.IsFloating).IsFalse();
+        await Assert.That(result.LibraryRange.VersionRange.HasLowerBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.HasUpperBound).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMinInclusive).IsTrue();
+        await Assert.That(result.LibraryRange.VersionRange.IsMaxInclusive).IsFalse();
     }
 
-    [Fact]
-    public void ToLibraryDependency_WithPrereleaseVersion_CreatesCorrectVersionRange()
+    [Test]
+    public async Task ToLibraryDependency_WithPrereleaseVersion_CreatesCorrectVersionRange()
     {
         PackageEntry package = new()
         {
@@ -157,14 +156,14 @@ public class PackageEntryExtensionsTests
 
         LibraryDependency result = package.ToLibraryDependency();
 
-        Assert.NotNull(result);
-        Assert.NotNull(result.LibraryRange);
-        Assert.Equal("Experimental.Package", result.LibraryRange.Name);
-        Assert.Equal(VersionRange.Parse("1.0.0-beta.1"), result.LibraryRange.VersionRange);
-        Assert.Equal(LibraryDependencyTarget.Package, result.LibraryRange.TypeConstraint);
+        await Assert.That(result).IsNotNull();
+        await Assert.That(result.LibraryRange).IsNotNull();
+        await Assert.That(result.LibraryRange.Name).IsEqualTo("Experimental.Package");
+        await Assert.That(result.LibraryRange.VersionRange).IsEqualTo(VersionRange.Parse("1.0.0-beta.1"));
+        await Assert.That(result.LibraryRange.TypeConstraint).IsEqualTo(LibraryDependencyTarget.Package);
     }
 
-    [Fact]
+    [Test]
     public void ToLibraryDependency_WithInvalidVersionString_ThrowsException()
     {
         PackageEntry package = new()
@@ -173,6 +172,6 @@ public class PackageEntryExtensionsTests
             Version = "[13.0.0"
         };
 
-        _ = Assert.Throws<ArgumentException>(package.ToLibraryDependency);
+        _ = Assert.Throws<ArgumentException>(() => package.ToLibraryDependency());
     }
 }

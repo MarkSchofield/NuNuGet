@@ -2,7 +2,6 @@ namespace NuNuGet.Tests;
 
 using NuNuGet.Models;
 using System.IO;
-using Xunit;
 
 using static NuNuGet.Tests.Helper;
 
@@ -19,11 +18,12 @@ internal static class TestEnvironment
     public static readonly string Package060 = Path.Combine(BuiltPackagesFolder, "NuNuGet.Reference.0.6.0.nupkg");
 }
 
+// The tests in this class share a single 'ReferenceFolder' on disk (nuget.config, packages.lock.json, etc.),
+// so they must not run concurrently with each other.
+[NotInParallel(nameof(ScenarioTests))]
 public class ScenarioTests
 {
     private static readonly string NuNuGetExecutableName = OperatingSystem.IsWindows() ? "NuNuGet.exe" : "NuNuGet";
-
-    private readonly ITestOutputHelper output;
 
     private ProcessManagement ProcessManagement { get; } = new ProcessManagement();
 
@@ -33,58 +33,61 @@ public class ScenarioTests
 
     private string NuNuGetPath { get; }
 
-    public ScenarioTests(ITestOutputHelper output)
+    public ScenarioTests()
     {
-        this.output = output;
         this.NuNuGetPath = Path.Combine(this.OutputFolder, NuNuGetExecutableName);
 
         this.ProcessManagement.WorkingDirectory = this.OutputFolder;
         this.ProcessManagement.EnvironmentVariables["NUGET_PACKAGES"] = null;
+    }
 
-        Assert.True(File.Exists(this.NuNuGetPath), $"Expected {NuNuGetExecutableName} to be present in the working folder: {this.OutputFolder}");
+    [Before(Test)]
+    public async Task VerifyNuNuGetExists()
+    {
+        await Assert.That(File.Exists(this.NuNuGetPath)).IsTrue().Because($"Expected {NuNuGetExecutableName} to be present in the working folder: {this.OutputFolder}");
     }
 
     private ProcessResult RunNuNuGet(params string[] args)
     {
-        this.output.WriteLine($"Running '{this.NuNuGetPath} {string.Join(' ', args)}' in folder '{this.OutputFolder}'");
+        TestContext.Current!.Output.WriteLine($"Running '{this.NuNuGetPath} {string.Join(' ', args)}' in folder '{this.OutputFolder}'");
         return this.ProcessManagement.Run(this.NuNuGetPath, string.Join(' ', args));
     }
 
-    [Fact]
-    public void InvocationErrorsWithNoParameters()
+    [Test]
+    public async Task InvocationErrorsWithNoParameters()
     {
         ProcessResult processResult = this.RunNuNuGet();
 
-        Assert.NotEqual(0, processResult.ExitCode);
+        await Assert.That(processResult.ExitCode).IsNotEqualTo(0);
     }
 
-    [Fact]
-    public void InvocationSucceedsWithHelp()
+    [Test]
+    public async Task InvocationSucceedsWithHelp()
     {
         ProcessResult processResult = this.RunNuNuGet("--help");
 
-        Assert.Equal(0, processResult.ExitCode);
+        await Assert.That(processResult.ExitCode).IsEqualTo(0);
     }
 
-    [Fact]
-    public void InvocationErrorsWithOnlyInstall()
+    [Test]
+    public async Task InvocationErrorsWithOnlyInstall()
     {
         ProcessResult processResult = this.RunNuNuGet("install");
 
-        Assert.NotEqual(0, processResult.ExitCode);
+        await Assert.That(processResult.ExitCode).IsNotEqualTo(0);
     }
 
-    [Fact]
-    public void InvocationErrorsWithConfigFile()
+    [Test]
+    public async Task InvocationErrorsWithConfigFile()
     {
         NuGetEnvironment nuGetEnvironment = new NuGetEnvironment(this.ReferenceFolder);
         ProcessResult processResult = this.RunNuNuGet("install", "--configFile", nuGetEnvironment.ConfigPath);
 
-        Assert.NotEqual(0, processResult.ExitCode);
+        await Assert.That(processResult.ExitCode).IsNotEqualTo(0);
     }
 
-    [Fact]
-    public void EndToEndScenario()
+    [Test]
+    public async Task EndToEndScenario()
     {
         NuGetEnvironment nuGetEnvironment = new NuGetEnvironment(this.ReferenceFolder);
 
@@ -105,9 +108,9 @@ public class ScenarioTests
                 "--lockFile", nuGetEnvironment.PackagesLockPath,
                 "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(0, processResult.ExitCode);
-            Assert.Contains($"GlobalPackagesPath: {nuGetEnvironment.GlobalPackagesPath}", processResult.StandardOutput);
-            Assert.Contains("NuNuGet.Reference/0.5.0", processResult.StandardOutput);
+            await Assert.That(processResult.ExitCode).IsEqualTo(0);
+            await Assert.That(processResult.StandardOutput).Contains($"GlobalPackagesPath: {nuGetEnvironment.GlobalPackagesPath}");
+            await Assert.That(processResult.StandardOutput).Contains("NuNuGet.Reference/0.5.0");
         }
 
         // Re-run with the same parameters, check for success and the same output.
@@ -117,8 +120,8 @@ public class ScenarioTests
                 "--lockFile", nuGetEnvironment.PackagesLockPath,
                 "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(0, processResult.ExitCode);
-            Assert.Contains("NuNuGet.Reference/0.5.0", processResult.StandardOutput);
+            await Assert.That(processResult.ExitCode).IsEqualTo(0);
+            await Assert.That(processResult.StandardOutput).Contains("NuNuGet.Reference/0.5.0");
         }
 
         // Add the 0.6.0 package to the package source, the 0.5.0 package should still be used as it's already in the lock file.
@@ -130,8 +133,8 @@ public class ScenarioTests
                 "--lockFile", nuGetEnvironment.PackagesLockPath,
                 "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(0, processResult.ExitCode);
-            Assert.Contains("NuNuGet.Reference/0.5.0", processResult.StandardOutput);
+            await Assert.That(processResult.ExitCode).IsEqualTo(0);
+            await Assert.That(processResult.StandardOutput).Contains("NuNuGet.Reference/0.5.0");
         }
 
         // Touch the packages.list.json, the 0.5.0 package should still be used as it's already in the lock file.
@@ -143,8 +146,8 @@ public class ScenarioTests
                 "--lockFile", nuGetEnvironment.PackagesLockPath,
                 "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(0, processResult.ExitCode);
-            Assert.Contains("NuNuGet.Reference/0.5.0", processResult.StandardOutput);
+            await Assert.That(processResult.ExitCode).IsEqualTo(0);
+            await Assert.That(processResult.StandardOutput).Contains("NuNuGet.Reference/0.5.0");
         }
 
         // Update the packages.list.json to reference 0.6.0, 'install' should fail.
@@ -160,7 +163,7 @@ public class ScenarioTests
                 "--lockFile", nuGetEnvironment.PackagesLockPath,
                 "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(100, processResult.ExitCode);
+            await Assert.That(processResult.ExitCode).IsEqualTo(100);
         }
 
         // Delete the lock file, re-run 'install' and 0.6.0 should be picked-up.
@@ -172,13 +175,13 @@ public class ScenarioTests
                 "--lockFile", nuGetEnvironment.PackagesLockPath,
                 "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(0, processResult.ExitCode);
-            Assert.Contains("NuNuGet.Reference/0.6.0", processResult.StandardOutput);
+            await Assert.That(processResult.ExitCode).IsEqualTo(0);
+            await Assert.That(processResult.StandardOutput).Contains("NuNuGet.Reference/0.6.0");
         }
     }
 
-    [Fact]
-    public void EndToEndScenario_PackageSourceMapping()
+    [Test]
+    public async Task EndToEndScenario_PackageSourceMapping()
     {
         NuGetEnvironment nuGetEnvironment = new NuGetEnvironment(this.ReferenceFolder);
 
@@ -214,8 +217,8 @@ public class ScenarioTests
         {
             ProcessResult processResult = this.RunNuNuGet("install", "--configFile", nuGetEnvironment.ConfigPath, "--lockFile", nuGetEnvironment.PackagesLockPath, "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(1, processResult.ExitCode);
-            Assert.Contains("Unable to resolve 'NuNuGet.Reference", processResult.StandardError);
+            await Assert.That(processResult.ExitCode).IsEqualTo(1);
+            await Assert.That(processResult.StandardError).Contains("Unable to resolve 'NuNuGet.Reference");
         }
 
         // Update nuget.config to allow 'store' to be considered for 'NuNuGet.*' packages, the install should succeed and pick-up the package from the 'store' source.
@@ -239,13 +242,13 @@ public class ScenarioTests
                 """);
             ProcessResult processResult = this.RunNuNuGet("install", "--configFile", nuGetEnvironment.ConfigPath, "--lockFile", nuGetEnvironment.PackagesLockPath, "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(0, processResult.ExitCode);
-            Assert.Contains("NuNuGet.Reference/0.5.0", processResult.StandardOutput);
+            await Assert.That(processResult.ExitCode).IsEqualTo(0);
+            await Assert.That(processResult.StandardOutput).Contains("NuNuGet.Reference/0.5.0");
         }
     }
 
-    [Fact]
-    public void EndToEndScenario_SpecialTargetFrameworkFallbacks()
+    [Test]
+    public async Task EndToEndScenario_SpecialTargetFrameworkFallbacks()
     {
         foreach (string targetFramework in new[] { "any", "native" })
         {
@@ -266,8 +269,8 @@ public class ScenarioTests
                 "--lockFile", nuGetEnvironment.PackagesLockPath,
                 "--listFile", nuGetEnvironment.PackagesListPath);
 
-            Assert.Equal(0, processResult.ExitCode);
-            Assert.Contains("NuNuGet.Reference/0.5.0", processResult.StandardOutput);
+            await Assert.That(processResult.ExitCode).IsEqualTo(0);
+            await Assert.That(processResult.StandardOutput).Contains("NuNuGet.Reference/0.5.0");
         }
     }
 }

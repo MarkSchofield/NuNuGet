@@ -2,89 +2,88 @@ namespace NuNuGet.Tests;
 
 using System;
 using System.IO;
-using Xunit;
 
 public class NuGetSupportTests
 {
-    [Fact]
-    public void ParsePackageNameAndVersion_SimpleThreePartVersion()
+    [Test]
+    public async Task ParsePackageNameAndVersion_SimpleThreePartVersion()
     {
         (string name, string version) = NuGetSupport.GetPackageNameAndVersion("MyPackage.1.0.0.nupkg");
 
-        Assert.Equal("MyPackage", name);
-        Assert.Equal("1.0.0", version);
+        await Assert.That(name).IsEqualTo("MyPackage");
+        await Assert.That(version).IsEqualTo("1.0.0");
     }
 
-    [Fact]
-    public void ParsePackageNameAndVersion_LargeVersionNumbers()
+    [Test]
+    public async Task ParsePackageNameAndVersion_LargeVersionNumbers()
     {
         (string name, string version) = NuGetSupport.GetPackageNameAndVersion("MyPackage.10.200.3000.nupkg");
 
-        Assert.Equal("MyPackage", name);
-        Assert.Equal("10.200.3000", version);
+        await Assert.That(name).IsEqualTo("MyPackage");
+        await Assert.That(version).IsEqualTo("10.200.3000");
     }
 
-    [Fact]
-    public void ParsePackageNameAndVersion_DottedPackageName()
+    [Test]
+    public async Task ParsePackageNameAndVersion_DottedPackageName()
     {
         (string name, string version) = NuGetSupport.GetPackageNameAndVersion("System.Text.Json.9.0.0.nupkg");
 
-        Assert.Equal("System.Text.Json", name);
-        Assert.Equal("9.0.0", version);
+        await Assert.That(name).IsEqualTo("System.Text.Json");
+        await Assert.That(version).IsEqualTo("9.0.0");
     }
 
-    [Fact]
-    public void ParsePackageNameAndVersion_PrereleaseVersion()
+    [Test]
+    public async Task ParsePackageNameAndVersion_PrereleaseVersion()
     {
         (string name, string version) = NuGetSupport.GetPackageNameAndVersion("MyPackage.1.0.0-beta.1.nupkg");
 
-        Assert.Equal("MyPackage", name);
-        Assert.Equal("1.0.0-beta.1", version);
+        await Assert.That(name).IsEqualTo("MyPackage");
+        await Assert.That(version).IsEqualTo("1.0.0-beta.1");
     }
 
-    [Fact]
-    public void ParsePackageNameAndVersion_DottedNameWithPrerelease()
+    [Test]
+    public async Task ParsePackageNameAndVersion_DottedNameWithPrerelease()
     {
         (string name, string version) = NuGetSupport.GetPackageNameAndVersion("My.Complex.Package.2.3.4-rc.2.nupkg");
 
-        Assert.Equal("My.Complex.Package", name);
-        Assert.Equal("2.3.4-rc.2", version);
+        await Assert.That(name).IsEqualTo("My.Complex.Package");
+        await Assert.That(version).IsEqualTo("2.3.4-rc.2");
     }
 
-    [Fact]
-    public void ParsePackageNameAndVersion_MultiSegmentPrerelease()
+    [Test]
+    public async Task ParsePackageNameAndVersion_MultiSegmentPrerelease()
     {
         (string name, string version) = NuGetSupport.GetPackageNameAndVersion("MyPackage.1.0.0-beta.2.3.nupkg");
 
-        Assert.Equal("MyPackage", name);
-        Assert.Equal("1.0.0-beta.2.3", version);
+        await Assert.That(name).IsEqualTo("MyPackage");
+        await Assert.That(version).IsEqualTo("1.0.0-beta.2.3");
     }
 
-    [Fact]
-    public void ParsePackageNameAndVersion_FullPathIsHandled()
+    [Test]
+    public async Task ParsePackageNameAndVersion_FullPathIsHandled()
     {
         (string name, string version) = NuGetSupport.GetPackageNameAndVersion(Path.Combine("C:", "packages", "Newtonsoft.Json.13.0.3.nupkg"));
 
-        Assert.Equal("Newtonsoft.Json", name);
-        Assert.Equal("13.0.3", version);
+        await Assert.That(name).IsEqualTo("Newtonsoft.Json");
+        await Assert.That(version).IsEqualTo("13.0.3");
     }
 
-    [Fact]
+    [Test]
     public void ParsePackageNameAndVersion_NoVersionThrows()
     {
         _ = Assert.Throws<InvalidOperationException>(() =>
             NuGetSupport.GetPackageNameAndVersion("NoVersion.nupkg"));
     }
 
-    [Fact]
+    [Test]
     public void ParsePackageNameAndVersion_EmptyStringThrows()
     {
         _ = Assert.Throws<InvalidOperationException>(() =>
             NuGetSupport.GetPackageNameAndVersion(".nupkg"));
     }
 
-    [Fact]
-    public void GetPackageSha512Hash_ReturnsConsistentHash()
+    [Test]
+    public async Task GetPackageSha512Hash_ReturnsConsistentHash()
     {
         string tempFile = Path.GetTempFileName();
         try
@@ -94,8 +93,8 @@ public class NuGetSupportTests
             string hash1 = NuGetSupport.GetPackageSha512Hash(tempFile);
             string hash2 = NuGetSupport.GetPackageSha512Hash(tempFile);
 
-            Assert.NotEmpty(hash1);
-            Assert.Equal(hash1, hash2);
+            await Assert.That(hash1).IsNotEmpty();
+            await Assert.That(hash2).IsEqualTo(hash1);
         }
         finally
         {
@@ -103,8 +102,8 @@ public class NuGetSupportTests
         }
     }
 
-    [Fact]
-    public void GetPackageSha512Hash_DifferentContentProducesDifferentHash()
+    [Test]
+    public async Task GetPackageSha512Hash_DifferentContentProducesDifferentHash()
     {
         string tempFile1 = Path.GetTempFileName();
         string tempFile2 = Path.GetTempFileName();
@@ -116,7 +115,7 @@ public class NuGetSupportTests
             string hash1 = NuGetSupport.GetPackageSha512Hash(tempFile1);
             string hash2 = NuGetSupport.GetPackageSha512Hash(tempFile2);
 
-            Assert.NotEqual(hash1, hash2);
+            await Assert.That(hash2).IsNotEqualTo(hash1);
         }
         finally
         {

@@ -13,9 +13,9 @@ updates:
       nuget:
         patterns:
           - "NuGet*"
-      xunit:
+      tunit:
         patterns:
-          - "xunit*"
+          - "TUnit*"
       gitversioning:
         patterns:
           - "Nerdbank.GitVersioning"
