@@ -177,6 +177,41 @@ public class ScenarioTests
         }
     }
 
+    [Theory]
+    [InlineData("net10.0")]
+    [InlineData("native")]
+    [InlineData("any")]
+    public void FloatingVersionIsPinnedByLockFile(string targetFramework)
+    {
+        NuGetEnvironment nuGetEnvironment = new NuGetEnvironment(this.ReferenceFolder);
+
+        WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
+        {
+            TargetFramework = targetFramework,
+            Packages = [new PackageEntry { Id = "NuNuGet.Reference", Version = "0.*" }]
+        });
+        nuGetEnvironment.AddPackageToSource(TestEnvironment.Package050);
+
+        string[] args = ["install",
+            "--configFile", nuGetEnvironment.ConfigPath,
+            "--lockFile", nuGetEnvironment.PackagesLockPath,
+            "--listFile", nuGetEnvironment.PackagesListPath];
+
+        ProcessResult first = this.RunNuNuGet(args);
+        Assert.Equal(0, first.ExitCode);
+        Assert.Contains("NuNuGet.Reference/0.5.0", first.StandardOutput);
+
+        // A newer package appears on the feed; the lock file must keep 0.5.0 pinned.
+        nuGetEnvironment.AddPackageToSource(TestEnvironment.Package060);
+        RemoveFolder(nuGetEnvironment.GlobalPackagesPath);
+        CreateFolder(nuGetEnvironment.GlobalPackagesPath);
+
+        ProcessResult second = this.RunNuNuGet(args);
+        Assert.Equal(0, second.ExitCode);
+        Assert.Contains("NuNuGet.Reference/0.5.0", second.StandardOutput);
+        Assert.DoesNotContain("0.6.0", second.StandardOutput);
+    }
+
     [Fact]
     public void EndToEndScenario_PackageSourceMapping()
     {
