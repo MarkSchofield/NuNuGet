@@ -34,6 +34,19 @@ internal sealed class NuGetEnvironment
         //  - Delete the 'globalPackagesPath', recreate it.
         DeleteFile(this.PackagesListPath);
         DeleteFile(this.PackagesLockPath);
+        this.SetSource(this.PackageSourcePath);
+        RemoveFolder(this.PackageSourcePath);
+        CreateFolder(this.PackageSourcePath);
+
+        RemoveFolder(this.GlobalPackagesPath);
+        CreateFolder(this.GlobalPackagesPath);
+    }
+
+    /// <summary>
+    /// Rewrites the 'nuget.config' so that <paramref name="source"/> is the only package source.
+    /// </summary>
+    internal void SetSource(string source)
+    {
         WriteFile(this.ConfigPath, $$"""
             <?xml version="1.0" encoding="utf-8"?>
             <configuration>
@@ -42,15 +55,10 @@ internal sealed class NuGetEnvironment
                 </config>
                 <packageSources>
                     <clear />
-                    <add key="store" value="{{this.PackageSourcePath}}" />
+                    <add key="store" value="{{source}}" allowInsecureConnections="true" />
                 </packageSources>
             </configuration>
             """);
-        RemoveFolder(this.PackageSourcePath);
-        CreateFolder(this.PackageSourcePath);
-
-        RemoveFolder(this.GlobalPackagesPath);
-        CreateFolder(this.GlobalPackagesPath);
     }
 
     internal void AddPackageToSource(string nupkgPath)

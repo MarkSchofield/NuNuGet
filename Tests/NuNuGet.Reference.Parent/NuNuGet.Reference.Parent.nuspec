@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>NuNuGet.Reference.Parent</id>
+    <version>1.0.0</version>
+    <authors>mschofie</authors>
+    <description>Reference NuGet for NuNuGet testing, depends on NuNuGet.Reference.Child with a lower minimum version than the one available.</description>
+    <dependencies>
+      <dependency id="NuNuGet.Reference.Child" version="1.0.0" />
+    </dependencies>
+  </metadata>
+</package>

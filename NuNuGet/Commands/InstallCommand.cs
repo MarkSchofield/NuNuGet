@@ -36,7 +36,7 @@ internal static class PackageEntryExtensions
             .FirstOrDefault(d => string.Equals(d.Id, package.Id, StringComparison.OrdinalIgnoreCase));
         if (locked is not null)
         {
-            range = new VersionRange(locked.ResolvedVersion, includeMinVersion: true, locked.ResolvedVersion, includeMaxVersion: true);
+            return InstallCommand.PinnedDependency(package.Id, locked.ResolvedVersion);
         }
 
         return new()
@@ -189,6 +189,32 @@ internal sealed class InstallCommand : Command
             && string.Equals(a.ContentHash, e.ContentHash, StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// Pins the transitive packages in the lock file to their exact locked versions. Without this, a transitive
+    /// dependency whose parent requests a lower minimum version than the locked one would not be found in the global
+    /// packages folder, and NuGet would go to the package sources to resolve it (which fails when offline, and could
+    /// pick a different version).
+    /// </summary>
+    private static IEnumerable<LibraryDependency> TransitivePins(PackagesLockFile? lockFile)
+    {
+        if (lockFile is null)
+        {
+            return [];
+        }
+
+        return lockFile.Targets[0].Dependencies
+            .Where(d => d.Type != PackageDependencyType.Direct)
+            .Select(d => PinnedDependency(d.Id, d.ResolvedVersion));
+    }
+
+    internal static LibraryDependency PinnedDependency(string id, NuGetVersion version)
+    {
+        return new()
+        {
+            LibraryRange = new(id, new VersionRange(version, includeMinVersion: true, version, includeMaxVersion: true), LibraryDependencyTarget.Package)
+        };
+    }
+
     private PackageSpec BuildPackageSpec(PackageList packageList, string globalPackagesPath, PackagesLockFile? existingLockFile)
     {
         PackageSpec packageSpec = new()
@@ -216,7 +242,7 @@ internal sealed class InstallCommand : Command
         packageSpec.TargetFrameworks.Add(new TargetFrameworkInformation
         {
             FrameworkName = BuildRestoreFramework(packageList.TargetFramework),
-            Dependencies = [.. packageList.Packages.Select(p => p.ToLibraryDependency(existingLockFile))]
+            Dependencies = [.. packageList.Packages.Select(p => p.ToLibraryDependency(existingLockFile)), .. TransitivePins(existingLockFile)]
         });
 
         return packageSpec;
