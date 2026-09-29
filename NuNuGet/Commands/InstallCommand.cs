@@ -236,6 +236,13 @@ internal sealed class InstallCommand : Command
                 RestoreLockProperties = existingLockFile is null
                     ? new RestoreLockProperties(restorePackagesWithLockFile: "True", nuGetLockFilePath: this.LockFile, restoreLockedMode: false)
                     : new RestoreLockProperties(restorePackagesWithLockFile: null, nuGetLockFilePath: null, restoreLockedMode: false),
+
+                // The vulnerability audit queries the package sources, which is slow and produces warnings when they
+                // are unreachable. When there is a lock file the packages are already pinned and nothing new is being
+                // resolved, so only audit when there is no lock file (i.e. when resolving the packages for the first time).
+                RestoreAuditProperties = existingLockFile is null
+                    ? null
+                    : new RestoreAuditProperties { EnableAudit = "false" },
             },
         };
 

@@ -247,6 +247,7 @@ public class ScenarioTests
         ProcessResult second = this.RunNuNuGet(args);
 
         Assert.Equal(0, second.ExitCode);
+        Assert.DoesNotContain("vulnerability", second.StandardError, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("NuNuGet.Reference/0.5.0", second.StandardOutput);
     }
 
@@ -283,6 +284,7 @@ public class ScenarioTests
         ProcessResult second = this.RunNuNuGet(args);
 
         Assert.Equal(0, second.ExitCode);
+        Assert.DoesNotContain("vulnerability", second.StandardError, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("NuNuGet.Reference.Child/1.1.0", second.StandardOutput);
         Assert.Contains("NuNuGet.Reference.Parent/1.0.0", second.StandardOutput);
     }
