@@ -21,9 +21,27 @@ internal static class PackageEntryExtensions
 {
     public static LibraryDependency ToLibraryDependency(this PackageEntry package)
     {
+        return package.ToLibraryDependency(null);
+    }
+
+    /// <summary>
+    /// Creates the <see cref="LibraryDependency"/> for a package entry. If there is a lock file, the dependency is
+    /// pinned to the exact version that the lock file resolved, so that new versions on the feed are never considered.
+    /// </summary>
+    public static LibraryDependency ToLibraryDependency(this PackageEntry package, PackagesLockFile? lockFile)
+    {
+        VersionRange range = VersionRange.Parse(package.Version);
+
+        LockFileDependency? locked = lockFile?.Targets[0].Dependencies
+            .FirstOrDefault(d => string.Equals(d.Id, package.Id, StringComparison.OrdinalIgnoreCase));
+        if (locked is not null)
+        {
+            return InstallCommand.PinnedDependency(package.Id, locked.ResolvedVersion);
+        }
+
         return new()
         {
-            LibraryRange = new(package.Id, VersionRange.Parse(package.Version), LibraryDependencyTarget.Package)
+            LibraryRange = new(package.Id, range, LibraryDependencyTarget.Package)
         };
     }
 }
@@ -118,7 +136,86 @@ internal sealed class InstallCommand : Command
         return new FallbackFramework(framework, [.. SpecialTargetFrameworkFallbacks]);
     }
 
-    private PackageSpec BuildPackageSpec(PackageList packageList, string globalPackagesPath)
+    /// <summary>
+    /// Determines whether the lock file still matches the package list: the same target framework, and the same set of
+    /// direct dependencies with the same requested version ranges.
+    /// </summary>
+    private static bool IsLockFileCurrent(PackagesLockFile lockFile, PackageList packageList)
+    {
+        if (lockFile.Targets.Count != 1)
+        {
+            return false;
+        }
+
+        PackagesLockFileTarget target = lockFile.Targets[0];
+        NuGetFramework expectedFramework = BuildRestoreFramework(packageList.TargetFramework);
+        if (!string.Equals(target.TargetFramework.DotNetFrameworkName, expectedFramework.DotNetFrameworkName, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        Dictionary<string, LockFileDependency> direct = target.Dependencies
+            .Where(d => d.Type == PackageDependencyType.Direct)
+            .ToDictionary(d => d.Id, StringComparer.OrdinalIgnoreCase);
+
+        if (direct.Count != packageList.Packages.Count)
+        {
+            return false;
+        }
+
+        return packageList.Packages.All(p =>
+            direct.TryGetValue(p.Id, out LockFileDependency? dependency)
+            && dependency.RequestedVersion is not null
+            && dependency.RequestedVersion.Equals(VersionRange.Parse(p.Version)));
+    }
+
+    /// <summary>
+    /// Determines whether the packages restored match the lock file exactly: the same ids, versions and content hashes.
+    /// </summary>
+    private static bool MatchesLockFile(PackagesLockFile restored, PackagesLockFile lockFile)
+    {
+        IList<LockFileDependency> expected = lockFile.Targets[0].Dependencies;
+        IList<LockFileDependency> actual = restored.Targets.Count == 1 ? restored.Targets[0].Dependencies : [];
+
+        if (expected.Count != actual.Count)
+        {
+            return false;
+        }
+
+        Dictionary<string, LockFileDependency> actualById = actual.ToDictionary(d => d.Id, StringComparer.OrdinalIgnoreCase);
+        return expected.All(e =>
+            actualById.TryGetValue(e.Id, out LockFileDependency? a)
+            && a.ResolvedVersion == e.ResolvedVersion
+            && string.Equals(a.ContentHash, e.ContentHash, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Pins the transitive packages in the lock file to their exact locked versions. Without this, a transitive
+    /// dependency whose parent requests a lower minimum version than the locked one would not be found in the global
+    /// packages folder, and NuGet would go to the package sources to resolve it (which fails when offline, and could
+    /// pick a different version).
+    /// </summary>
+    private static IEnumerable<LibraryDependency> TransitivePins(PackagesLockFile? lockFile)
+    {
+        if (lockFile is null)
+        {
+            return [];
+        }
+
+        return lockFile.Targets[0].Dependencies
+            .Where(d => d.Type != PackageDependencyType.Direct)
+            .Select(d => PinnedDependency(d.Id, d.ResolvedVersion));
+    }
+
+    internal static LibraryDependency PinnedDependency(string id, NuGetVersion version)
+    {
+        return new()
+        {
+            LibraryRange = new(id, new VersionRange(version, includeMinVersion: true, version, includeMaxVersion: true), LibraryDependencyTarget.Package)
+        };
+    }
+
+    private PackageSpec BuildPackageSpec(PackageList packageList, string globalPackagesPath, PackagesLockFile? existingLockFile)
     {
         PackageSpec packageSpec = new()
         {
@@ -133,17 +230,26 @@ internal sealed class InstallCommand : Command
                 OutputPath = Path.Combine(this.WorkingDirectory, "obj"),
                 PackagesPath = globalPackagesPath,
                 ProjectStyle = ProjectStyle.PackageReference,
-                RestoreLockProperties = new RestoreLockProperties(
-                    restorePackagesWithLockFile: "True",
-                    nuGetLockFilePath: this.LockFile,
-                    restoreLockedMode: true),
+                // When there is an existing lock file, the versions are pinned explicitly (see 'ToLibraryDependency')
+                // rather than relying on NuGet's locked mode, which silently stops pinning for 'FallbackFramework'
+                // target frameworks ('any' and 'native') and then fails with a content hash validation error.
+                RestoreLockProperties = existingLockFile is null
+                    ? new RestoreLockProperties(restorePackagesWithLockFile: "True", nuGetLockFilePath: this.LockFile, restoreLockedMode: false)
+                    : new RestoreLockProperties(restorePackagesWithLockFile: null, nuGetLockFilePath: null, restoreLockedMode: false),
+
+                // The vulnerability audit queries the package sources, which is slow and produces warnings when they
+                // are unreachable. When there is a lock file the packages are already pinned and nothing new is being
+                // resolved, so only audit when there is no lock file (i.e. when resolving the packages for the first time).
+                RestoreAuditProperties = existingLockFile is null
+                    ? null
+                    : new RestoreAuditProperties { EnableAudit = "false" },
             },
         };
 
         packageSpec.TargetFrameworks.Add(new TargetFrameworkInformation
         {
             FrameworkName = BuildRestoreFramework(packageList.TargetFramework),
-            Dependencies = [.. packageList.Packages.Select(p => p.ToLibraryDependency())]
+            Dependencies = [.. packageList.Packages.Select(p => p.ToLibraryDependency(existingLockFile)), .. TransitivePins(existingLockFile)]
         });
 
         return packageSpec;
@@ -170,6 +276,12 @@ internal sealed class InstallCommand : Command
         File.WriteAllText(this.LockFile, newLockFileContent);
     }
 
+    private static int ReportStaleLockFile()
+    {
+        Console.Error.WriteLine("Restore failed due to a mismatch between the package list and the lock file. Delete the lock file to force a rebuild.");
+        return 100;
+    }
+
     private async Task<int> Invoke(ParseResult parseResult, CancellationToken cancellationToken)
     {
         if (parseResult.GetValue(VerboseOption.Instance))
@@ -185,7 +297,18 @@ internal sealed class InstallCommand : Command
         // Load and deserialize the package list JSON file
         PackageList packageList = LoadPackageList(this.ListFile!);
 
-        PackageSpec packageSpec = this.BuildPackageSpec(packageList, globalPackagesPath);
+        // If there is a lock file then it pins the restore, provided it is still current for the package list.
+        PackagesLockFile? existingLockFile = null;
+        if (File.Exists(this.LockFile))
+        {
+            existingLockFile = PackagesLockFileFormat.Read(this.LockFile, new NuGetLoggerAdapter(this.Logger));
+            if (!IsLockFileCurrent(existingLockFile, packageList))
+            {
+                return ReportStaleLockFile();
+            }
+        }
+
+        PackageSpec packageSpec = this.BuildPackageSpec(packageList, globalPackagesPath, existingLockFile);
         DependencyGraphSpec dependencyGraphSpec = new();
         dependencyGraphSpec.AddProject(packageSpec);
         dependencyGraphSpec.AddRestore(packageSpec.RestoreMetadata.ProjectUniqueName);
@@ -224,8 +347,7 @@ internal sealed class InstallCommand : Command
             bool staleLockFile = result.LogMessages.Any(m => m.Code == NuGetLogCode.NU1004);
             if (staleLockFile)
             {
-                Console.Error.WriteLine("Restore failed due to a mismatch between the package list and the lock file. Delete the lock file to force a rebuild.");
-                return 100;
+                return ReportStaleLockFile();
             }
 
             throw new InvalidOperationException("Restore failed:\n" + string.Join("\n", result.LogMessages.Select(m => m.Message)));
@@ -244,17 +366,25 @@ internal sealed class InstallCommand : Command
         // public API. The cache file is used to speed up subsequent restores by caching information about the remote
         // sources, so it is not strictly necessary to write it out for the install command to function correctly.
 
-        // If the result has a lock file, write it. Otherwise load the existing one in order to write the package list.
-        PackagesLockFile? packagesLockFile = null;
-        if (result.LockFile is not null)
+        // If there was no lock file, write the one that the restore produced. Otherwise the restore was pinned to the
+        // existing lock file: check that it restored exactly what the lock file says, and use the lock file as-is.
+        PackagesLockFile packagesLockFile;
+        PackagesLockFile restoredLockFile = new PackagesLockFileBuilder().CreateNuGetLockFile(result.LockFile);
+        if (existingLockFile is null)
         {
-            packagesLockFile = new PackagesLockFileBuilder().CreateNuGetLockFile(result.LockFile);
+            packagesLockFile = restoredLockFile;
 
             this.WriteLockFile(packagesLockFile);
         }
         else
         {
-            packagesLockFile = PackagesLockFileFormat.Read(this.LockFile, nugetLogger);
+            if (!MatchesLockFile(restoredLockFile, existingLockFile))
+            {
+                Console.Error.WriteLine("Restore produced packages that differ from the lock file (a package or its content hash has changed). Delete the lock file to force a rebuild.");
+                return 100;
+            }
+
+            packagesLockFile = existingLockFile;
         }
 
         // Write out the metadata for consumption
