@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>NuNuGet.Reference.Parent</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- NuGet Packaging -->
+  <!--
+    The package is described by a hand-written nuspec so that it can depend on 'NuNuGet.Reference.Child' with a minimum
+    version (1.0.0) that is lower than the only version of the child that exists (1.1.0). A restore of this project
+    would not be able to satisfy that dependency, and nothing is restored from the nuspec.
+  -->
+  <PropertyGroup>
+    <PackageId>NuNuGet.Reference.Parent</PackageId>
+    <Version>1.0.0</Version>
+    <NuspecFile>NuNuGet.Reference.Parent.nuspec</NuspecFile>
+    <NuspecBasePath>$(MSBuildProjectDirectory)</NuspecBasePath>
+    <PackageCompressionLevel>Optimal</PackageCompressionLevel>
+  </PropertyGroup>
+
+</Project>

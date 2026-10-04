@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>NuNuGet.Reference.Child</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- NuGet Packaging -->
+  <PropertyGroup>
+    <PackageId>NuNuGet.Reference.Child</PackageId>
+    <Version>1.1.0</Version>
+    <Authors>mschofie</Authors>
+    <Company>mschofie</Company>
+    <Title>NuNuGet.Reference.Child</Title>
+    <Description>Reference NuGet for NuNuGet testing, the transitive dependency of NuNuGet.Reference.Parent.</Description>
+    <PackageDescription>A reference NuGet package for testing NuNuGet, the transitive dependency of NuNuGet.Reference.Parent.</PackageDescription>
+    <PackageTags>NuGet;Package;Tool</PackageTags>
+    <PackageCompressionLevel>Optimal</PackageCompressionLevel>
+  </PropertyGroup>
+
+</Project>
