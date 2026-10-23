@@ -29,6 +29,8 @@
     <ProjectReference Include="$(RootPath)NuNuGet\NuNuGet.csproj" />
     <ProjectReference Include="$(RootPath)Tests\NuNuGet.Reference.0.5\NuNuGet.Reference.0.5.csproj" ReferenceOutputAssembly="false" Targets="pack" />
     <ProjectReference Include="$(RootPath)Tests\NuNuGet.Reference.0.6\NuNuGet.Reference.0.6.csproj" ReferenceOutputAssembly="false" Targets="pack" />
+    <ProjectReference Include="$(RootPath)Tests\NuNuGet.Reference.Child\NuNuGet.Reference.Child.csproj" ReferenceOutputAssembly="false" Targets="pack" />
+    <ProjectReference Include="$(RootPath)Tests\NuNuGet.Reference.Parent\NuNuGet.Reference.Parent.csproj" ReferenceOutputAssembly="false" Targets="pack" />
   </ItemGroup>
 
 </Project>

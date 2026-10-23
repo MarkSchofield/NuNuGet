@@ -17,6 +17,10 @@ internal static class TestEnvironment
     public static readonly string Package050 = Path.Combine(BuiltPackagesFolder, "NuNuGet.Reference.0.5.0.nupkg");
 
     public static readonly string Package060 = Path.Combine(BuiltPackagesFolder, "NuNuGet.Reference.0.6.0.nupkg");
+
+    public static readonly string PackageParent100 = Path.Combine(BuiltPackagesFolder, "NuNuGet.Reference.Parent.1.0.0.nupkg");
+
+    public static readonly string PackageChild110 = Path.Combine(BuiltPackagesFolder, "NuNuGet.Reference.Child.1.1.0.nupkg");
 }
 
 public class ScenarioTests
@@ -174,6 +178,126 @@ public class ScenarioTests
 
             Assert.Equal(0, processResult.ExitCode);
             Assert.Contains("NuNuGet.Reference/0.6.0", processResult.StandardOutput);
+        }
+    }
+
+    [Theory]
+    [InlineData("net10.0")]
+    [InlineData("native")]
+    [InlineData("any")]
+    public void FloatingVersionIsPinnedByLockFile(string targetFramework)
+    {
+        NuGetEnvironment nuGetEnvironment = new NuGetEnvironment(this.ReferenceFolder);
+
+        WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
+        {
+            TargetFramework = targetFramework,
+            Packages = [new PackageEntry { Id = "NuNuGet.Reference", Version = "0.*" }]
+        });
+        nuGetEnvironment.AddPackageToSource(TestEnvironment.Package050);
+
+        string[] args = ["install",
+            "--configFile", nuGetEnvironment.ConfigPath,
+            "--lockFile", nuGetEnvironment.PackagesLockPath,
+            "--listFile", nuGetEnvironment.PackagesListPath];
+
+        ProcessResult first = this.RunNuNuGet(args);
+        Assert.Equal(0, first.ExitCode);
+        Assert.Contains("NuNuGet.Reference/0.5.0", first.StandardOutput);
+
+        // A newer package appears on the feed; the lock file must keep 0.5.0 pinned.
+        nuGetEnvironment.AddPackageToSource(TestEnvironment.Package060);
+        RemoveFolder(nuGetEnvironment.GlobalPackagesPath);
+        CreateFolder(nuGetEnvironment.GlobalPackagesPath);
+
+        ProcessResult second = this.RunNuNuGet(args);
+        Assert.Equal(0, second.ExitCode);
+        Assert.Contains("NuNuGet.Reference/0.5.0", second.StandardOutput);
+        Assert.DoesNotContain("0.6.0", second.StandardOutput);
+    }
+
+    [Theory]
+    [InlineData("0.5.0")]
+    [InlineData("0.*")]
+    public void InstallSucceedsWithLockFileWhenSourceIsUnreachable(string version)
+    {
+        NuGetEnvironment nuGetEnvironment = new NuGetEnvironment(this.ReferenceFolder);
+
+        WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
+        {
+            TargetFramework = "net10.0",
+            Packages = [new PackageEntry { Id = "NuNuGet.Reference", Version = version }]
+        });
+        nuGetEnvironment.AddPackageToSource(TestEnvironment.Package050);
+
+        string[] args = ["install",
+            "--configFile", nuGetEnvironment.ConfigPath,
+            "--lockFile", nuGetEnvironment.PackagesLockPath,
+            "--listFile", nuGetEnvironment.PackagesListPath];
+
+        // Arrange: create the lock file and populate the global packages folder while the source is available.
+        ProcessResult first = this.RunNuNuGet(args);
+        Assert.Equal(0, first.ExitCode);
+        Assert.Contains("NuNuGet.Reference/0.5.0", first.StandardOutput);
+
+        // Simulate the network being down: the only source is a loopback port with nothing listening on it.
+        nuGetEnvironment.SetSource($"http://127.0.0.1:{GetUnusedPort()}/v3/index.json");
+
+        // Act: the lock file pins the graph and the packages are already in the global packages folder.
+        ProcessResult second = this.RunNuNuGet(args);
+
+        Assert.Equal(0, second.ExitCode);
+        Assert.Contains("NuNuGet.Reference/0.5.0", second.StandardOutput);
+    }
+
+    [Theory]
+    [InlineData("net10.0")]
+    [InlineData("native")]
+    public void InstallSucceedsWithLockFileWhenSourceIsUnreachable_TransitiveDependencyLockedAboveParentsMinimum(string targetFramework)
+    {
+        NuGetEnvironment nuGetEnvironment = new NuGetEnvironment(this.ReferenceFolder);
+
+        // 'Parent' depends on 'Child >= 1.0.0', but the only 'Child' that exists is 1.1.0, so the lock file locks 1.1.0.
+        WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
+        {
+            TargetFramework = targetFramework,
+            Packages = [new PackageEntry { Id = "NuNuGet.Reference.Parent", Version = "1.0.0" }]
+        });
+        nuGetEnvironment.AddPackageToSource(TestEnvironment.PackageParent100);
+        nuGetEnvironment.AddPackageToSource(TestEnvironment.PackageChild110);
+
+        string[] args = ["install",
+            "--configFile", nuGetEnvironment.ConfigPath,
+            "--lockFile", nuGetEnvironment.PackagesLockPath,
+            "--listFile", nuGetEnvironment.PackagesListPath];
+
+        ProcessResult first = this.RunNuNuGet(args);
+        Assert.Equal(0, first.ExitCode);
+        Assert.Contains("NuNuGet.Reference.Child/1.1.0", first.StandardOutput);
+        Assert.Contains("NuNuGet.Reference.Parent/1.0.0", first.StandardOutput);
+
+        // With the source unreachable, 'Child 1.0.0' (the parent's minimum) can't be looked up, so the transitive
+        // dependency has to be pinned to the locked 1.1.0.
+        nuGetEnvironment.SetSource($"http://127.0.0.1:{GetUnusedPort()}/v3/index.json");
+
+        ProcessResult second = this.RunNuNuGet(args);
+
+        Assert.Equal(0, second.ExitCode);
+        Assert.Contains("NuNuGet.Reference.Child/1.1.0", second.StandardOutput);
+        Assert.Contains("NuNuGet.Reference.Parent/1.0.0", second.StandardOutput);
+    }
+
+    private static int GetUnusedPort()
+    {
+        System.Net.Sockets.TcpListener listener = new(System.Net.IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            return ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
         }
     }
 
