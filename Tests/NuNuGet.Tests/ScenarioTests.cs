@@ -94,7 +94,7 @@ public class ScenarioTests
 
         WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
         {
-            TargetFramework = "net10.0",
+            TargetFramework = "net11.0",
             Packages =
             [
                 new PackageEntry { Id = "NuNuGet.Reference", Version = "0.5.0" }
@@ -155,7 +155,7 @@ public class ScenarioTests
         {
             WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
             {
-                TargetFramework = "net10.0",
+                TargetFramework = "net11.0",
                 Packages = [new() { Id = "NuNuGet.Reference", Version = "0.6.0" }]
             });
 
@@ -182,7 +182,7 @@ public class ScenarioTests
     }
 
     [Theory]
-    [InlineData("net10.0")]
+    [InlineData("net11.0")]
     [InlineData("native")]
     [InlineData("any")]
     public void FloatingVersionIsPinnedByLockFile(string targetFramework)
@@ -225,7 +225,7 @@ public class ScenarioTests
 
         WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
         {
-            TargetFramework = "net10.0",
+            TargetFramework = "net11.0",
             Packages = [new PackageEntry { Id = "NuNuGet.Reference", Version = version }]
         });
         nuGetEnvironment.AddPackageToSource(TestEnvironment.Package050);
@@ -251,7 +251,7 @@ public class ScenarioTests
     }
 
     [Theory]
-    [InlineData("net10.0")]
+    [InlineData("net11.0")]
     [InlineData("native")]
     public void InstallSucceedsWithLockFileWhenSourceIsUnreachable_TransitiveDependencyLockedAboveParentsMinimum(string targetFramework)
     {
@@ -308,7 +308,7 @@ public class ScenarioTests
 
         WriteObject(nuGetEnvironment.PackagesListPath, new PackageList
         {
-            TargetFramework = "net10.0",
+            TargetFramework = "net11.0",
             Packages =
             [
                 new PackageEntry { Id = "NuNuGet.Reference", Version = "0.5.0" }

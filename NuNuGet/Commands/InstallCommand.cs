@@ -53,7 +53,7 @@ internal sealed class InstallCommand : Command
 {
     private static readonly NuGetFramework[] SpecialTargetFrameworkFallbacks =
     [
-        NuGetFramework.Parse("net10.0"),
+        NuGetFramework.Parse("net11.0"),
         NuGetFramework.Parse("net461"),
     ];
 
