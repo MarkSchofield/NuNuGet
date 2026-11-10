@@ -103,11 +103,9 @@ dotnet publish .\NuNuGet.csproj --runtime win-arm64 /p:PublishProfile=SingleFile
 | `SelfContained`                     | Self-contained (no .NET runtime required)                                             |
 | `SingleFile`                        | Framework-dependent single file                                                       |
 | `SingleFileSelfContained`           | Self-contained single file (no .NET runtime required)                                 |
-| `SingleFileTrimmed`                 | Framework-dependent with IL trimming &dagger;                                         |
-| `SingleFileSelfContainedTrimmed`    | Self-contained with IL trimming (no .NET runtime required) &dagger;                   |
-| `SingleFileSelfContainedTrimmedAot` | Self-contained with IL trimming (no .NET runtime required) and AOT compiled &dagger;  |
-
-&dagger; - Not yet working; trimming/AOT problems exist. Used to validate 'NuGet.Client' builds.
+| `SingleFileTrimmed`                 | Framework-dependent with IL trimming                                                  |
+| `SingleFileSelfContainedTrimmed`    | Self-contained with IL trimming (no .NET runtime required)                            |
+| `SingleFileSelfContainedTrimmedAot` | Self-contained with IL trimming (no .NET runtime required) and AOT compiled           |
 
 ## Packaging
 
