@@ -15,6 +15,8 @@
   <Folder Name="/Tests/">
     <Project Path="Tests/NuNuGet.Reference.0.5/NuNuGet.Reference.0.5.csproj" />
     <Project Path="Tests/NuNuGet.Reference.0.6/NuNuGet.Reference.0.6.csproj" />
+    <Project Path="Tests/NuNuGet.Reference.Child/NuNuGet.Reference.Child.csproj" />
+    <Project Path="Tests/NuNuGet.Reference.Parent/NuNuGet.Reference.Parent.csproj" />
     <Project Path="Tests/NuNuGet.Tests/NuNuGet.Tests.csproj" />
   </Folder>
   <Project Path="NuNuGet/NuNuGet.csproj" />

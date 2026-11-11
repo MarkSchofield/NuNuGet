@@ -4,7 +4,7 @@ internal static class Build
 {
     public static string GetRootPath()
     {
-        return Git.GetRepositoryRoot(Path.GetDirectoryName(typeof(ScenarioTests).Assembly.Location)!);
+        return Git.GetRepositoryRoot(AppContext.BaseDirectory);
     }
 
     public static string GetConfiguration()

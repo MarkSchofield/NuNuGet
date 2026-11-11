@@ -1,0 +1,46 @@
+name: Build, Test, Pack
+description: Builds, Tests and then Packs
+inputs:
+  configuration:
+    description: The dotnet configuration to build.
+    required: true
+  runtime:
+    description: The dotnet runtime identifier to build.
+    required: true
+  publish-profile:
+    description: The dotnet 'Publish Profile' to use.
+    required: true
+  publish-project:
+    description: The dotnet project to publish.
+    required: true
+  log-path:
+    description: The path to write logs to.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Build (${{ inputs.configuration }})
+      shell: pwsh
+      run: |
+        & dotnet build  --no-restore `
+                        --configuration ${{ inputs.configuration }} `
+                        /bl:${{ inputs.log-path }}/msbuild.build.${{ inputs.configuration }}.binlog
+
+    - name: Test (${{ inputs.configuration }})
+      shell: pwsh
+      run: |
+        & dotnet test --no-restore `
+                      --configuration ${{ inputs.configuration }} `
+                      /bl:${{ inputs.log-path }}/msbuild.test.${{ inputs.configuration }}.binlog
+
+    # When packing, avoid the --no-restore, otherwise the runtime identifier isn't honored.
+    - name: Pack (${{ inputs.configuration }})
+      shell: pwsh
+      run: |
+        & dotnet pack ${{ inputs.publish-project }} `
+                      --configuration ${{ inputs.configuration }} `
+                      --runtime ${{ inputs.runtime }} `
+                      /p:PublishProfile=${{ inputs.publish-profile }} `
+                      /bl:${{ inputs.log-path }}/msbuild.pack.${{ inputs.configuration }}.binlog
+

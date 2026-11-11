@@ -1,5 +1,6 @@
 namespace NuNuGet.Tests;
 
+using NuNuGet.Models;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -30,10 +31,10 @@ internal sealed class Helper
         }
     }
 
-    public static void WriteObject<T>(string path, T obj)
+    public static void WriteObject(string path, PackageList obj)
     {
         using FileStream fs = File.Create(path);
-        JsonSerializer.Serialize(fs, obj);
+        JsonSerializer.Serialize(fs, obj, PackageListJsonContext.Default.PackageList);
     }
 
     public static void WriteFile(string path, string contents)

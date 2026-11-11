@@ -3,6 +3,7 @@ namespace NuNuGet.Tests;
 using System;
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using static NuNuGet.Tests.Helper;
 
@@ -78,8 +79,6 @@ internal sealed class NuGetExeCli : INuGetCli
 /// </summary>
 internal sealed partial class NuGetZipCli : INuGetCli
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.General) { WriteIndented = true };
-
     internal NuGetZipCli()
     {
     }
@@ -110,7 +109,9 @@ internal sealed partial class NuGetZipCli : INuGetCli
         //     "contentHash": "<base64-encoded sha512 hash of the nupkg file>",
         //   }
         string metadataPath = Path.Combine(targetDir, ".nupkg.metadata");
-        string metadataJson = JsonSerializer.Serialize(new { version = 2, contentHash = packageHash }, JsonOptions);
+        string metadataJson = JsonSerializer.Serialize(
+            new NupkgMetadata { Version = 2, ContentHash = packageHash },
+            NupkgMetadataJsonContext.Default.NupkgMetadata);
         WriteFile(metadataPath, metadataJson);
 
         // 6) Extract the .nuspec file from the nupkg and write it to the folder as '<lower case packagename>.nuspec'
@@ -125,4 +126,25 @@ internal sealed partial class NuGetZipCli : INuGetCli
     {
         return new NuGetZipCli();
     }
+}
+
+/// <summary>
+/// Represents the contents of a <c>.nupkg.metadata</c> file written into a local NuGet package source.
+/// </summary>
+internal sealed class NupkgMetadata
+{
+    [JsonPropertyName("version")]
+    public required int Version { get; set; }
+
+    [JsonPropertyName("contentHash")]
+    public required string ContentHash { get; set; }
+}
+
+/// <summary>
+/// Source-generated JSON serializer context for AOT-friendly serialization of <see cref="NupkgMetadata"/>.
+/// </summary>
+[JsonSourceGenerationOptions(WriteIndented = true)]
+[JsonSerializable(typeof(NupkgMetadata))]
+internal sealed partial class NupkgMetadataJsonContext : JsonSerializerContext
+{
 }
